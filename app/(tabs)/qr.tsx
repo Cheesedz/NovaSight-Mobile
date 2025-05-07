@@ -6,7 +6,7 @@ import { Animated, Dimensions, StyleSheet, View } from "react-native";
 
 const { width } = Dimensions.get("window");
 
-export default function DocumentScannerScreen() {
+export default function QrScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
@@ -68,7 +68,7 @@ export default function DocumentScannerScreen() {
         {/* Instruction Message */}
         <View style={styles.messageContainer}>
           <ThemedText style={styles.messageText}>
-            Place your document inside the frame
+            Place your code inside the frame
           </ThemedText>
         </View>
       </View>
@@ -76,8 +76,8 @@ export default function DocumentScannerScreen() {
   );
 }
 
-const SCAN_WIDTH = width * 0.9;
-const SCAN_HEIGHT = SCAN_WIDTH * 1.5;
+const SCAN_WIDTH = width * 0.7;
+const SCAN_HEIGHT = SCAN_WIDTH;
 
 const styles = StyleSheet.create({
   container: {

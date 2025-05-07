@@ -68,7 +68,7 @@ export default function DocumentScannerScreen() {
         {/* Instruction Message */}
         <View style={styles.messageContainer}>
           <ThemedText style={styles.messageText}>
-            Place your document inside the frame
+            Detecting distance...
           </ThemedText>
         </View>
       </View>
@@ -76,7 +76,7 @@ export default function DocumentScannerScreen() {
   );
 }
 
-const SCAN_WIDTH = width * 0.9;
+const SCAN_WIDTH = width * 0.8;
 const SCAN_HEIGHT = SCAN_WIDTH * 1.5;
 
 const styles = StyleSheet.create({
@@ -95,8 +95,8 @@ const styles = StyleSheet.create({
   scanArea: {
     width: SCAN_WIDTH,
     height: SCAN_HEIGHT,
-    borderColor: "#87fbff",
-    borderWidth: 5,
+    // borderColor: "#87fbff",
+    // borderWidth: 5,
     backgroundColor: "transparent",
     overflow: "hidden",
   },
