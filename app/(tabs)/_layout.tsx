@@ -1,5 +1,5 @@
-import { Tabs } from "expo-router";
-import React from "react";
+import { Tabs, useRouter } from "expo-router";
+import React, { useEffect, useRef } from "react";
 import {
   Dimensions,
   Platform,
@@ -13,6 +13,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 
 const { width: screenWidth } = Dimensions.get("window");
 const TAB_COUNT_VISIBLE = 6; // Limit to 6 tabs visible at a time
@@ -20,6 +21,16 @@ const TAB_WIDTH = screenWidth / TAB_COUNT_VISIBLE; // Equal width for each tab
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const voiceRoute = useVoiceCommand();
+  const lastVoice = useRef<string>("/");
+
+  useEffect(() => {
+    if (voiceRoute && voiceRoute !== lastVoice.current) {
+      router.replace(voiceRoute);
+      lastVoice.current = voiceRoute;
+    }
+  }, [voiceRoute]);
 
   const CustomTabBar = ({
     state,
