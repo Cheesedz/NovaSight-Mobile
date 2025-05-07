@@ -1,4 +1,5 @@
 import { AudioModule, RecordingPresets, useAudioRecorder } from "expo-audio";
+import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 
@@ -20,6 +21,16 @@ const COMMAND_TO_PATH = {
   add_face: "/add-face",
   face: "/scan-face",
 } as const;
+
+const COMMAND_TO_SPEECH = {
+  text: "Nhận diện văn bản",
+  money: "Nhận diện tiền mặt",
+  item: "Giải thích hình ảnh",
+  product: "Nhận diện sản phẩm thông qua mã vạch",
+  distance: "Tìm kiếm vị trí của một vật thể và khoảng cách từ vị trí hiện tại",
+  add_face: "Đăng ký nhận diện khuôn mặt với người thân, bạn bè của tôi",
+  face: "Nhận diện khuôn mặt",
+};
 
 type Path = (typeof COMMAND_TO_PATH)[VoiceCommand];
 
@@ -155,6 +166,14 @@ export function useVoiceCommand(): Path {
               const cmd = await processVoiceCommand(uri);
               if (cmd in COMMAND_TO_PATH) {
                 setRoute(COMMAND_TO_PATH[cmd as VoiceCommand]);
+                Speech.speak(
+                  `Tôi hiểu rồi. Đang thực hiện chức năng ${
+                    COMMAND_TO_SPEECH[cmd as VoiceCommand]
+                  }`,
+                  {
+                    language: "vi-VN",
+                  }
+                );
               }
             }
           } catch (stopErr) {
