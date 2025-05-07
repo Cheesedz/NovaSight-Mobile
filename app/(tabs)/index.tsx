@@ -10,6 +10,8 @@ export default function DocumentScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
+  const cameraRef = useRef<CameraView>(null);
+  const hasCapturedRef = useRef(false);
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -35,6 +37,31 @@ export default function DocumentScannerScreen() {
       ).start();
     }
   }, [isFocused]);
+
+  useEffect(() => {
+    if (isFocused && !hasCapturedRef.current) {
+      hasCapturedRef.current = true;
+      const interval = setInterval(async () => {
+        try {
+          if (cameraRef.current) {
+            const photo = await cameraRef.current.takePictureAsync({
+              skipProcessing: true,
+            });
+            await sendRawImageToServer(photo.uri);
+          }
+        } catch (err) {
+          console.error("Capture failed:", err);
+        }
+      }, 5000); // wait 5 seconds after screen is focused
+
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else if (!isFocused) {
+      hasCapturedRef.current = false;
+    }
+  }, [isFocused]);
+
   if (permission === null) return <View />;
   if (permission?.status == "denied")
     return (
@@ -48,9 +75,38 @@ export default function DocumentScannerScreen() {
     outputRange: [0, SCAN_HEIGHT - 2], // Height of scanning box
   });
 
+  async function sendRawImageToServer(imageUri: string) {
+    const formData = new FormData();
+    formData.append("file", {
+      uri: imageUri,
+      type: "image/jpeg",
+      name: "document.jpg",
+    } as any);
+
+    try {
+      const response = await fetch(
+        "https://huy-vincent.app.n8n.cloud/webhook-test/test-image",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+      console.log("AI response:", result);
+    } catch (err) {
+      console.error("Failed to send image:", err);
+    }
+  }
+
   return (
     <View style={styles.container}>
-      {isFocused ? <CameraView style={styles.camera} facing="back" /> : null}
+      {isFocused ? (
+        <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+      ) : null}
 
       {/* Overlay */}
       <View style={styles.overlay}>

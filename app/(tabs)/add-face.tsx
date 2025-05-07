@@ -50,7 +50,7 @@ export default function AddFaceScreen() {
 
   return (
     <View style={styles.container}>
-      {isFocused ? <CameraView style={styles.camera} facing="back" /> : null}
+      {isFocused ? <CameraView style={styles.camera} facing="front" /> : null}
 
       {/* Overlay */}
       <View style={styles.overlay}>
