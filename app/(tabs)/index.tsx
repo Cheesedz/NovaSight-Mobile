@@ -1,4 +1,5 @@
 import { ThemedText } from "@/components/ThemedText";
+import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import React, { useEffect, useRef } from "react";
@@ -11,7 +12,13 @@ export default function DocumentScannerScreen() {
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
   const cameraRef = useRef<CameraView>(null);
-  const hasCapturedRef = useRef(false);
+
+  useAutoCaptureImage({
+    cameraRef,
+    isFocused,
+    captureInterval: 5000,
+    detectionType: "text",
+  });
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -38,30 +45,6 @@ export default function DocumentScannerScreen() {
     }
   }, [isFocused]);
 
-  useEffect(() => {
-    if (isFocused && !hasCapturedRef.current) {
-      hasCapturedRef.current = true;
-      const interval = setInterval(async () => {
-        try {
-          if (cameraRef.current) {
-            const photo = await cameraRef.current.takePictureAsync({
-              skipProcessing: true,
-            });
-            await sendRawImageToServer(photo.uri);
-          }
-        } catch (err) {
-          console.error("Capture failed:", err);
-        }
-      }, 5000); // wait 5 seconds after screen is focused
-
-      return () => {
-        if (interval) clearInterval(interval);
-      };
-    } else if (!isFocused) {
-      hasCapturedRef.current = false;
-    }
-  }, [isFocused]);
-
   if (permission === null) return <View />;
   if (permission?.status == "denied")
     return (
@@ -74,33 +57,6 @@ export default function DocumentScannerScreen() {
     inputRange: [0, 1],
     outputRange: [0, SCAN_HEIGHT - 2], // Height of scanning box
   });
-
-  async function sendRawImageToServer(imageUri: string) {
-    const formData = new FormData();
-    formData.append("file", {
-      uri: imageUri,
-      type: "image/jpeg",
-      name: "document.jpg",
-    } as any);
-
-    try {
-      const response = await fetch(
-        "https://huy-vincent.app.n8n.cloud/webhook-test/test-image",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          body: formData,
-        }
-      );
-
-      const result = await response.json();
-      console.log("AI response:", result);
-    } catch (err) {
-      console.error("Failed to send image:", err);
-    }
-  }
 
   return (
     <View style={styles.container}>
