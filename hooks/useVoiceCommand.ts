@@ -37,8 +37,25 @@ type Path = (typeof COMMAND_TO_PATH)[VoiceCommand];
 export function useVoiceCommand(): Path {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const busyRef = useRef(false);
+  const isSpeakingRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null);
   const [route, setRoute] = useState<Path>("/");
+
+  const speakSafely = (text: string) => {
+    isSpeakingRef.current = true;
+    Speech.speak(text, {
+      language: "vi-VN",
+      onDone: () => {
+        isSpeakingRef.current = false;
+      },
+      onStopped: () => {
+        isSpeakingRef.current = false;
+      },
+      onError: () => {
+        isSpeakingRef.current = false;
+      },
+    });
+  };
 
   const processVoiceCommand = async (uri: string): Promise<string> => {
     try {
@@ -148,7 +165,8 @@ export function useVoiceCommand(): Path {
     })();
     intervalRef.current = setInterval(async () => {
       // guard against overlap
-      if (busyRef.current || audioRecorder.isRecording) return;
+      if (busyRef.current || audioRecorder.isRecording || isSpeakingRef.current)
+        return;
       busyRef.current = true;
 
       try {
@@ -166,13 +184,10 @@ export function useVoiceCommand(): Path {
               const cmd = await processVoiceCommand(uri);
               if (cmd in COMMAND_TO_PATH) {
                 setRoute(COMMAND_TO_PATH[cmd as VoiceCommand]);
-                Speech.speak(
+                speakSafely(
                   `Tôi hiểu rồi. Đang thực hiện chức năng ${
                     COMMAND_TO_SPEECH[cmd as VoiceCommand]
-                  }`,
-                  {
-                    language: "vi-VN",
-                  }
+                  }`
                 );
               }
             }
