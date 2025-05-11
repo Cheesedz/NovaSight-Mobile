@@ -1,3 +1,4 @@
+import { isSpeakingRef } from "@/utils/speechState";
 import { AudioModule, RecordingPresets, useAudioRecorder } from "expo-audio";
 import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
@@ -15,7 +16,7 @@ type VoiceCommand =
 const COMMAND_TO_PATH = {
   text: "/",
   money: "/money",
-  item: "/qr",
+  item: "/image",
   product: "/qr",
   distance: "/distance",
   add_face: "/add-face",
@@ -34,11 +35,9 @@ const COMMAND_TO_SPEECH = {
 
 type Path = (typeof COMMAND_TO_PATH)[VoiceCommand];
 
-export function useVoiceCommand(): Path {
+export function useVoiceCommand() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const busyRef = useRef(false);
-  const isSpeakingRef = useRef(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(null);
   const [route, setRoute] = useState<Path>("/");
 
   const speakSafely = (text: string) => {
@@ -115,9 +114,9 @@ export function useVoiceCommand(): Path {
         {
           role: "system",
           content: `
-            Bạn là trợ lý AI chuyên xử lý các yêu cầu từ văn bản chuyển đổi từ giọng nói. 
+            Bạn là trợ lý AI chuyên xử lý các yêu cầu từ văn bản chuyển đổi từ giọng nói.
             Dựa trên nội dung của yêu cầu, hãy trả về ID duy nhất của hành động phù hợp nhất từ danh sách dưới đây:
-            
+
             - 'text' - Nhận diện văn bản.
             - 'money' - Nhận diện tiền mặt.
             - 'item' - Giải thích hình ảnh.
@@ -156,6 +155,44 @@ export function useVoiceCommand(): Path {
     return data?.choices?.[0]?.message?.content?.trim() ?? "text";
   };
 
+  const startListening = async () => {
+    if (busyRef.current || isSpeakingRef.current || audioRecorder.isRecording)
+      return;
+    busyRef.current = true;
+
+    try {
+      console.log("Starting recording...");
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+    } catch (err) {
+      console.error("Start record failed", err);
+      busyRef.current = false;
+    }
+  };
+
+  const stopListening = async () => {
+    try {
+      console.log("Stopping recording...");
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      if (uri) {
+        const cmd = await processVoiceCommand(uri);
+        if (cmd in COMMAND_TO_PATH) {
+          setRoute(COMMAND_TO_PATH[cmd as VoiceCommand]);
+          speakSafely(
+            `Đang thực hiện chức năng ${
+              COMMAND_TO_SPEECH[cmd as VoiceCommand]
+            }. Hãy đưa camera về phía đối tượng cần nhận diện.`
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Stop record failed", err);
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
   useEffect(() => {
     (async () => {
       const status = await AudioModule.requestRecordingPermissionsAsync();
@@ -163,50 +200,7 @@ export function useVoiceCommand(): Path {
         Alert.alert("Microphone permission denied");
       }
     })();
-    intervalRef.current = setInterval(async () => {
-      // guard against overlap
-      if (busyRef.current || audioRecorder.isRecording || isSpeakingRef.current)
-        return;
-      busyRef.current = true;
+  }, []);
 
-      try {
-        // 1) prepare & start
-        await audioRecorder.prepareToRecordAsync();
-        audioRecorder.record();
-
-        // 2) stop after 3s
-        setTimeout(async () => {
-          try {
-            await audioRecorder.stop();
-            console.debug("Audio URI", audioRecorder.uri);
-            const uri = audioRecorder.uri;
-            if (uri) {
-              const cmd = await processVoiceCommand(uri);
-              if (cmd in COMMAND_TO_PATH) {
-                setRoute(COMMAND_TO_PATH[cmd as VoiceCommand]);
-                speakSafely(
-                  `Tôi hiểu rồi. Đang thực hiện chức năng ${
-                    COMMAND_TO_SPEECH[cmd as VoiceCommand]
-                  }`
-                );
-              }
-            }
-          } catch (stopErr) {
-            console.error("Stop failed:", stopErr);
-          } finally {
-            busyRef.current = false;
-          }
-        }, 5000);
-      } catch (err) {
-        console.error("Recording cycle failed:", err);
-        busyRef.current = false;
-      }
-    }, 10000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [audioRecorder]);
-
-  return route;
+  return { route, startListening, stopListening };
 }

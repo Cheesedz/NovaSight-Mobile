@@ -1,8 +1,17 @@
 import { ThemedText } from "@/components/ThemedText";
+import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
+import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import {
+  Animated,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -10,6 +19,30 @@ export default function FaceScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
+  const cameraRef = useRef<CameraView>(null);
+  const router = useRouter();
+  const {
+    route: voiceRoute,
+    startListening,
+    stopListening,
+  } = useVoiceCommand();
+  const lastVoice = useRef<string>("/");
+  const [allowedSendImage, setAllowedSendImage] = React.useState(true);
+
+  useEffect(() => {
+    if (voiceRoute && voiceRoute !== lastVoice.current) {
+      router.replace(voiceRoute);
+      lastVoice.current = voiceRoute;
+    }
+  }, [voiceRoute]);
+
+  useAutoCaptureImage({
+    cameraRef,
+    isFocused,
+    captureInterval: 5000,
+    detectionType: "face",
+    enabled: allowedSendImage,
+  });
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -49,8 +82,25 @@ export default function FaceScannerScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      {isFocused ? <CameraView style={styles.camera} facing="back" /> : null}
+    <Pressable
+      style={styles.container}
+      onPressIn={() => {
+        startListening();
+        setAllowedSendImage(false);
+      }}
+      onPressOut={() => {
+        stopListening();
+        setAllowedSendImage(true);
+      }}
+    >
+      {isFocused ? (
+        <CameraView
+          key={isFocused ? "camera-active" : "camera-inactive"}
+          ref={cameraRef}
+          style={styles.camera}
+          facing="front"
+        />
+      ) : null}
 
       {/* Overlay */}
       <View style={styles.overlay}>
@@ -72,7 +122,7 @@ export default function FaceScannerScreen() {
           </ThemedText>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

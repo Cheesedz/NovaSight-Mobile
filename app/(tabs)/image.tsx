@@ -15,7 +15,7 @@ import {
 
 const { width } = Dimensions.get("window");
 
-export default function DocumentScannerScreen() {
+export default function ImageScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
@@ -32,6 +32,7 @@ export default function DocumentScannerScreen() {
   useEffect(() => {
     if (voiceRoute && voiceRoute !== lastVoice.current) {
       router.replace(voiceRoute);
+      lastVoice.current = voiceRoute;
     }
   }, [voiceRoute]);
 
@@ -39,7 +40,7 @@ export default function DocumentScannerScreen() {
     cameraRef,
     isFocused,
     captureInterval: 5000,
-    detectionType: "distance",
+    detectionType: "item",
     enabled: allowedSendImage,
   });
 

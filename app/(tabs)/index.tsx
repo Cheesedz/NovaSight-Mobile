@@ -1,9 +1,18 @@
 import { ThemedText } from "@/components/ThemedText";
 import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
+import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import {
+  Animated,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -12,12 +21,49 @@ export default function DocumentScannerScreen() {
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
   const cameraRef = useRef<CameraView>(null);
+  const router = useRouter();
+  const {
+    route: voiceRoute,
+    startListening,
+    stopListening,
+  } = useVoiceCommand();
+  const lastVoice = useRef<string>("/");
+  const [allowedSendImage, setAllowedSendImage] = React.useState(true);
+
+  useEffect(() => {
+    Speech.speak(
+      `Chào mừng bạn đến với NovaSight. 
+      Ứng dụng hỗ trợ bạn với các chức năng như: 
+      Đọc tài liệu, nhận diện tiền mặt, mô tả hình ảnh, nhận diện sản phẩm, nhận diện khuôn mặt, nhận diện hình ảnh, đăng ký khuôn mặt người thân. 
+      Để ra lệnh bằng giọng nói, hãy nhấn giữ vào màn hình`,
+      {
+        language: "vi-VN",
+        onStart: () => {
+          setAllowedSendImage(false);
+        },
+        onDone: () => {
+          setAllowedSendImage(true);
+        },
+        onError: () => {
+          setAllowedSendImage(true);
+        },
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    if (voiceRoute && voiceRoute !== lastVoice.current) {
+      router.replace(voiceRoute);
+      lastVoice.current = voiceRoute;
+    }
+  }, [voiceRoute]);
 
   useAutoCaptureImage({
     cameraRef,
     isFocused,
     captureInterval: 5000,
     detectionType: "text",
+    enabled: allowedSendImage,
   });
 
   useEffect(() => {
@@ -59,9 +105,24 @@ export default function DocumentScannerScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <Pressable
+      style={styles.container}
+      onPressIn={() => {
+        startListening();
+        setAllowedSendImage(false);
+      }}
+      onPressOut={() => {
+        stopListening();
+        setAllowedSendImage(true);
+      }}
+    >
       {isFocused ? (
-        <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+        <CameraView
+          key={isFocused ? "camera-active" : "camera-inactive"}
+          ref={cameraRef}
+          style={styles.camera}
+          facing="back"
+        />
       ) : null}
 
       {/* Overlay */}
@@ -84,7 +145,7 @@ export default function DocumentScannerScreen() {
           </ThemedText>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

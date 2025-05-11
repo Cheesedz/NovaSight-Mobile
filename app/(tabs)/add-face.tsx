@@ -1,8 +1,20 @@
 import { ThemedText } from "@/components/ThemedText";
+import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
+import { useVoiceCommand } from "@/hooks/useVoiceCommand";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Button,
+  Dimensions,
+  Modal,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -10,6 +22,54 @@ export default function AddFaceScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
   const animation = useRef(new Animated.Value(0)).current;
+  const cameraRef = useRef<CameraView>(null);
+  const router = useRouter();
+  const {
+    route: voiceRoute,
+    startListening,
+    stopListening,
+  } = useVoiceCommand();
+  const lastVoice = useRef<string>("/");
+  const [allowedSendImage, setAllowedSendImage] = React.useState(true);
+  const [showPopup, setShowPopup] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    hometown: "",
+    relationship: "",
+    date_of_birth: "",
+  });
+
+  useEffect(() => {
+    console.log("current route:", voiceRoute, "last route:", lastVoice.current);
+    if (voiceRoute && voiceRoute !== lastVoice.current) {
+      router.replace(voiceRoute);
+      lastVoice.current = voiceRoute;
+    }
+  }, [voiceRoute]);
+
+  const { submitCapturedImage } = useAutoCaptureImage({
+    cameraRef,
+    isFocused,
+    captureInterval: 5000,
+    detectionType: "add_face",
+    enabled: allowedSendImage,
+    onImageCaptured: () => {
+      setShowPopup(true); // Mở form điền tên
+    },
+  });
+
+  const handleSubmit = async () => {
+    setShowPopup(false);
+    setAllowedSendImage(false);
+    await submitCapturedImage(form);
+    setAllowedSendImage(true);
+    setForm({
+      name: "",
+      hometown: "",
+      relationship: "",
+      date_of_birth: "",
+    });
+  };
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -49,8 +109,25 @@ export default function AddFaceScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      {isFocused ? <CameraView style={styles.camera} facing="front" /> : null}
+    <Pressable
+      style={styles.container}
+      onPressIn={() => {
+        startListening();
+        setAllowedSendImage(false);
+      }}
+      onPressOut={() => {
+        stopListening();
+        setAllowedSendImage(true);
+      }}
+    >
+      {isFocused ? (
+        <CameraView
+          key={isFocused ? "camera-active" : "camera-inactive"}
+          ref={cameraRef}
+          style={styles.camera}
+          facing="front"
+        />
+      ) : null}
 
       {/* Overlay */}
       <View style={styles.overlay}>
@@ -72,7 +149,59 @@ export default function AddFaceScreen() {
           </ThemedText>
         </View>
       </View>
-    </View>
+
+      <Modal visible={showPopup} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#00000088",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              padding: 20,
+              borderRadius: 10,
+              width: "90%",
+            }}
+          >
+            <ThemedText
+              style={{ fontWeight: "bold", fontSize: 18, marginBottom: 10 }}
+            >
+              Thông tin người thân
+            </ThemedText>
+
+            {(
+              ["name", "hometown", "relationship", "date_of_birth"] as Array<
+                keyof typeof form
+              >
+            ).map((key) => (
+              <View key={key} style={{ marginBottom: 12 }}>
+                <ThemedText style={{ fontWeight: "500" }}>
+                  {key.replaceAll("_", " ")} *
+                </ThemedText>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#ccc",
+                    borderRadius: 5,
+                    padding: 8,
+                    marginTop: 4,
+                  }}
+                  value={form[key] as string}
+                  onChangeText={(text) => setForm({ ...form, [key]: text })}
+                  placeholder={key}
+                />
+              </View>
+            ))}
+
+            <Button title="Gửi thông tin" onPress={handleSubmit} />
+          </View>
+        </View>
+      </Modal>
+    </Pressable>
   );
 }
 
