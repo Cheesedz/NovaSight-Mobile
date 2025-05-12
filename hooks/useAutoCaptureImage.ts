@@ -29,12 +29,12 @@ const MAP_LEADING_TEXT: Partial<
   Record<keyof typeof DETECTION_TYPE_TO_ROUTE, string>
 > = {
   text: "Văn bản có nội dung như sau: ",
-  money: "Tiền mặt có mệnh giá là: ",
+  money: "Tổng số tiền trước mặt bạn là: ",
   item: "Hình ảnh trước mặt bạn là: ",
   product: "Sản phẩm có tên là: ",
-  distance: "Khoảng cách là: ",
+  distance: "",
   add_face: "Đăng ký khuôn mặt thành công. ",
-  face: "Trước mặt bạn là: ",
+  face: "",
 };
 
 export function useAutoCaptureImage({
@@ -100,6 +100,10 @@ export function useAutoCaptureImage({
             isSpeakingRef.current = true;
           },
           onDone: () => {
+            isSpeakingRef.current = false;
+            isProcessingRef.current = false;
+          },
+          onStopped: () => {
             isSpeakingRef.current = false;
             isProcessingRef.current = false;
           },

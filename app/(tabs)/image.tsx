@@ -1,9 +1,11 @@
 import { ThemedText } from "@/components/ThemedText";
 import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
+import { isSpeakingRef } from "@/utils/speechState";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
@@ -87,6 +89,8 @@ export default function ImageScannerScreen() {
       onPressIn={() => {
         startListening();
         setAllowedSendImage(false);
+        Speech.stop();
+        isSpeakingRef.current = false;
       }}
       onPressOut={() => {
         stopListening();
@@ -117,9 +121,7 @@ export default function ImageScannerScreen() {
 
         {/* Instruction Message */}
         <View style={styles.messageContainer}>
-          <ThemedText style={styles.messageText}>
-            Detecting distance...
-          </ThemedText>
+          <ThemedText style={styles.messageText}>Analyzing image...</ThemedText>
         </View>
       </View>
     </Pressable>

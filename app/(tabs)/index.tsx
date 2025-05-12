@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
+import { isSpeakingRef } from "@/utils/speechState";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
@@ -61,7 +62,7 @@ export default function DocumentScannerScreen() {
   useAutoCaptureImage({
     cameraRef,
     isFocused,
-    captureInterval: 5000,
+    captureInterval: 10000,
     detectionType: "text",
     enabled: allowedSendImage,
   });
@@ -110,6 +111,8 @@ export default function DocumentScannerScreen() {
       onPressIn={() => {
         startListening();
         setAllowedSendImage(false);
+        Speech.stop();
+        isSpeakingRef.current = false;
       }}
       onPressOut={() => {
         stopListening();

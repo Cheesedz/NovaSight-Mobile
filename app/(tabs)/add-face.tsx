@@ -1,9 +1,11 @@
 import { ThemedText } from "@/components/ThemedText";
 import { useAutoCaptureImage } from "@/hooks/useAutoCaptureImage";
 import { useVoiceCommand } from "@/hooks/useVoiceCommand";
+import { isSpeakingRef } from "@/utils/speechState";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -40,7 +42,6 @@ export default function AddFaceScreen() {
   });
 
   useEffect(() => {
-    console.log("current route:", voiceRoute, "last route:", lastVoice.current);
     if (voiceRoute && voiceRoute !== lastVoice.current) {
       router.replace(voiceRoute);
       lastVoice.current = voiceRoute;
@@ -114,6 +115,8 @@ export default function AddFaceScreen() {
       onPressIn={() => {
         startListening();
         setAllowedSendImage(false);
+        Speech.stop();
+        isSpeakingRef.current = false;
       }}
       onPressOut={() => {
         stopListening();
